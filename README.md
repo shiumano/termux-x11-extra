@@ -36,6 +36,8 @@ If you're done using Termux:X11 just simply exit it through it's notification dr
 Some apps may have issues with wayland regarding DPI. please see https://wiki.archlinux.org/title/HiDPI on how to override application-specific DPI or scaling.
 
 You can fix this in your window manager settings (in the case of xfce4 and lxqt via Applications Menu > Settings > Appearance). Look for the DPI value, if it is disabled enable it and adjust its value until the fonts are the appropriate size.
+
+I think you should create `.Xresources` and set `Xft.dpi: 96`.
 <details>
 <summary> Screenshot </summary>
 
