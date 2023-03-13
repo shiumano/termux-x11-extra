@@ -30,22 +30,21 @@ import android.view.ViewConfiguration;
 @SuppressWarnings("unused")
 public class TouchParser {
 
-    private static final int WL_STATE_PRESSED = 1;
-    private static final int WL_STATE_RELEASED = 0;
+    private static final int XCB_BUTTON_PRESS = 4;
+    private static final int XCB_BUTTON_RELEASE = 5;
 
     private static final int WL_POINTER_AXIS_VERTICAL_SCROLL = 0;
     private static final int WL_POINTER_AXIS_HORIZONTAL_SCROLL = 1;
 
-    static final int TOUCH_MODE_DIRECT = 1;
-    static final int TOUCH_MODE_MOUSE = 2;
-    static final int TOUCH_MODE_TOUCHPAD = 3;
+    static final int TOUCH_MODE_MOUSE = 0;
+    static final int TOUCH_MODE_TOUCHPAD = 1;
 
-    static final int BTN_LEFT = 0x110;
-    static final int BTN_RIGHT = 0x111;
-    static final int BTN_MIDDLE = 0x112;
+    static final int BTN_LEFT = 1;
+    static final int BTN_MIDDLE = 2;
+    static final int BTN_RIGHT = 3;
 
-    static final int ACTION_DOWN = WL_STATE_PRESSED;
-    static final int ACTION_UP = WL_STATE_RELEASED;
+    static final int ACTION_DOWN = XCB_BUTTON_PRESS;
+    static final int ACTION_UP = XCB_BUTTON_RELEASE;
 
     private static final int AXIS_X = WL_POINTER_AXIS_HORIZONTAL_SCROLL;
     private static final int AXIS_Y = WL_POINTER_AXIS_VERTICAL_SCROLL;
@@ -54,11 +53,7 @@ public class TouchParser {
         void onPointerButton(int button, int state);
         void onPointerMotion(int x, int y);
         void onPointerScroll(int axis, float value);
-
-        void onTouchDown(int id, float x, float y);
-        void onTouchMotion(int id, float x, float y);
-        void onTouchUp(int id);
-        void onTouchFrame();
+        void toggleExtraKeys();
     }
 
     private int mTouchSlopSquare;
@@ -73,6 +68,7 @@ public class TouchParser {
     private static final int TOUCH_SLOP = 8;
     private static final int DOUBLE_TAP_SLOP = 100;
     private static final int DOUBLE_TAP_TOUCH_SLOP = TOUCH_SLOP;
+    private static final int TRIPLE_FINGER_SWING_TRESHOLD = 10;
 
     // constants for Message.what used by GestureHandler below
     private static final int SHOW_PRESS = 1;
@@ -101,12 +97,13 @@ public class TouchParser {
     private float mLastFocusY;
     private float mDownFocusX;
     private float mDownFocusY;
+    private float density;
 
     private boolean mIsLongpressEnabled;
 
     private View target;
     private Point cursor;
-    private int mMode = TOUCH_MODE_DIRECT;
+    private int mMode = TOUCH_MODE_TOUCHPAD;
 
     private boolean mInDrag = false;
     private boolean mWasInDrag = false;
@@ -189,6 +186,13 @@ public class TouchParser {
         mTouchSlopSquare = touchSlop * touchSlop;
         mDoubleTapTouchSlopSquare = doubleTapTouchSlop * doubleTapTouchSlop;
         mDoubleTapSlopSquare = doubleTapSlop * doubleTapSlop;
+        density = context.getResources().getDisplayMetrics().density;
+    }
+
+    public void setCursorCoordinates(int x, int y) {
+        cursor.x = x;
+        cursor.y = y;
+        mListener.onPointerMotion(x, y);
     }
 
     void setMode(int mode) {
@@ -206,32 +210,6 @@ public class TouchParser {
     boolean onTouchEvent(MotionEvent ev) {
         if ((ev.getSource() & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE) {
             return hmListener.onTouch(ev);
-        }
-
-        if (mMode == TOUCH_MODE_DIRECT) {
-            // get pointer index from the event object
-            int pointerIndex = ev.getActionIndex();
-
-            // get pointer ID
-            int pointerId = ev.getPointerId(pointerIndex);
-
-            switch(ev.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                case MotionEvent.ACTION_POINTER_DOWN:
-                    mListener.onTouchDown(pointerId, ev.getX(pointerIndex), ev.getY(pointerIndex));
-                    break;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_POINTER_UP:
-                    mListener.onTouchUp(pointerId);
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    for (int i=0; i< ev.getPointerCount(); i++)
-                    mListener.onTouchMotion(ev.getPointerId(i), ev.getX(i), ev.getY(i));
-                    break;
-            }
-
-            mListener.onTouchFrame();
-            return true;
         }
 
         final int action = ev.getAction();
@@ -353,6 +331,8 @@ public class TouchParser {
 
             case MotionEvent.ACTION_UP:
                 mStillDown = false;
+                currentTripleFingerTriggered = false;
+                currentTripleFingerScrollValue = 0;
                 MotionEvent currentUpEvent = MotionEvent.obtain(ev);
                 if (mMode == TOUCH_MODE_MOUSE) {
                     stopDrag();
@@ -400,6 +380,8 @@ public class TouchParser {
         return handled;
     }
 
+    float currentTripleFingerScrollValue = 0;
+    boolean currentTripleFingerTriggered = false;
     private void onScroll(MotionEvent ev, float scrollX, float scrollY) {
         if (ev.getPointerCount() == 1) {
             if (mMode == TOUCH_MODE_MOUSE) {
@@ -420,10 +402,24 @@ public class TouchParser {
 
             mListener.onPointerMotion(cursor.x, cursor.y);
         } else if (ev.getPointerCount() == 2) {
-            if (scrollX != 0)
+            if (scrollX != 0 && Math.abs(scrollX) > density)
                 mListener.onPointerScroll(MotionEvent.AXIS_Y, (int)scrollX);
-            if (scrollY != 0)
+            if (scrollY != 0 && Math.abs(scrollY) > density)
                 mListener.onPointerScroll(MotionEvent.AXIS_X, (int)scrollY);
+        } else if (ev.getPointerCount() == 3) {
+            if (currentTripleFingerTriggered)
+                return;
+
+            if (scrollY > 0)
+                currentTripleFingerScrollValue = 0; // some kind of reset
+            if (scrollY < 0)
+                currentTripleFingerScrollValue += scrollY;
+
+            if (currentTripleFingerScrollValue < -30 || currentTripleFingerScrollValue > 30) {
+                mListener.toggleExtraKeys();
+                currentTripleFingerScrollValue = 0;
+                currentTripleFingerTriggered = true;
+            }
         }
     }
 
@@ -494,8 +490,6 @@ public class TouchParser {
         mInLongPress = true;
         mListener.onPointerButton(BTN_LEFT, ACTION_DOWN);
     }
-
-
 
     private class HardwareMouseListener {
         private int savedBS = 0;

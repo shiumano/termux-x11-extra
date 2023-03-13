@@ -1,0 +1,32 @@
+[submodule "app/src/main/cpp/wayland"]
+	path = app/src/main/cpp/wayland
+	url = https://gitlab.freedesktop.org/wayland/wayland
+	ignore = dirty
+[submodule "app/src/main/cpp/libxcb"]
+	path = app/src/main/cpp/libxcb
+	url = https://gitlab.freedesktop.org/xorg/lib/libxcb
+	ignore = dirty
+[submodule "app/src/main/cpp/xorgproto"]
+	path = app/src/main/cpp/xorgproto
+	url = https://gitlab.freedesktop.org/xorg/proto/xorgproto
+	ignore = dirty
+[submodule "app/src/main/cpp/xcbproto"]
+	path = app/src/main/cpp/xcbproto
+	url = https://gitlab.freedesktop.org/xorg/proto/xcbproto
+	ignore = dirty
+[submodule "app/src/main/cpp/libXau"]
+	path = app/src/main/cpp/libXau
+	url = https://gitlab.freedesktop.org/xorg/lib/libxau
+	ignore = dirty
+[submodule "app/src/main/cpp/libxcb-errors"]
+	path = app/src/main/cpp/libxcb-errors
+	url = https://gitlab.freedesktop.org/xorg/lib/libxcb-errors
+	ignore = dirty
+[submodule "app/src/main/cpp/libxcvt"]
+	path = app/src/main/cpp/libxcvt
+	url = https://gitlab.freedesktop.org/xorg/lib/libxcvt
+	ignore = dirty
+[submodule "app/src/main/cpp/libxkbcommon"]
+	path = app/src/main/cpp/libxkbcommon
+	url = https://github.com/xkbcommon/libxkbcommon
+	ignore = dirty

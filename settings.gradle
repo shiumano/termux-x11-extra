@@ -1,4 +1,3 @@
-include ':starter:stub'
-include ':starter'
-include ':common'
+include ':shell-loader:stub'
+include ':shell-loader'
 include ':app'
